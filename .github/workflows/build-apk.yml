@@ -12,16 +12,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Find and extract Android project
+      - name: Find project ZIP
+        id: findzip
         run: |
           ZIP=$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)
           if [ -z "$ZIP" ]; then
             echo "ZIP proyek tidak ditemukan di folder utama."
             exit 1
           fi
-          mkdir android-project
-          unzip -q "$ZIP" -d android-project
-          echo "Daftar file proyek:"
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "ZIP ditemukan: $ZIP"
+
+      - name: Extract project
+        run: |
+          mkdir -p android-project
+          unzip -q "${{ steps.findzip.outputs.zip }}" -d android-project
+          echo "Isi ZIP:"
           find android-project -maxdepth 4 -type f | head -100
 
       - name: Set up Java
@@ -34,8 +40,8 @@ jobs:
         run: |
           GRADLEW=$(find android-project -type f -name gradlew | head -n 1)
           if [ -z "$GRADLEW" ]; then
-            echo "File gradlew tidak ditemukan dalam ZIP."
-            echo "ZIP mungkin bukan proyek Android lengkap."
+            echo "GAGAL: file gradlew tidak ditemukan di ZIP."
+            echo "ZIP harus berisi proyek Android lengkap."
             exit 1
           fi
           PROJECT_DIR=$(dirname "$GRADLEW")
@@ -49,3 +55,4 @@ jobs:
         with:
           name: KP2251-APK
           path: android-project/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

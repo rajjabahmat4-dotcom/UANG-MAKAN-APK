@@ -14,23 +14,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Find and extract Android project
+      - name: Extract Android project
         run: |
           ZIP=$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)
-          if [ -z "$ZIP" ]; then
-            echo "ERROR: File ZIP proyek tidak ditemukan."
-            exit 1
-          fi
+          test -n "$ZIP" || { echo "ZIP tidak ditemukan"; exit 1; }
           mkdir -p android-project
           unzip -oq "$ZIP" -d android-project
-          echo "Isi proyek:"
+          echo "Daftar file proyek:"
           find android-project -maxdepth 4 -type f | head -100
-          GRADLEW=$(find android-project -type f -name gradlew | head -n 1)
-          if [ -z "$GRADLEW" ]; then
-            echo "ERROR: File gradlew tidak ditemukan dalam ZIP."
-            exit 1
-          fi
-          echo "PROJECT_DIR=$(dirname "$GRADLEW")" >> "$GITHUB_ENV"
+          SETTINGS=$(find android-project -type f \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)
+          test -n "$SETTINGS" || { echo "settings.gradle tidak ditemukan"; exit 1; }
+          echo "PROJECT_DIR=$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -44,8 +38,7 @@ jobs:
       - name: Build APK
         run: |
           cd "$PROJECT_DIR"
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          gradle assembleDebug
 
       - name: Upload APK
         if: success()

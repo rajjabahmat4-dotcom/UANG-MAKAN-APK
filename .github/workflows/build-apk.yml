@@ -4,6 +4,9 @@ name: Build APK KP2251
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,23 +15,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Find project ZIP
-        id: findzip
+      - name: Find and extract Android project
         run: |
           ZIP=$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)
           if [ -z "$ZIP" ]; then
-            echo "ZIP proyek tidak ditemukan di folder utama."
+            echo "ERROR: File ZIP proyek tidak ditemukan."
             exit 1
           fi
-          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
-          echo "ZIP ditemukan: $ZIP"
 
-      - name: Extract project
-        run: |
           mkdir -p android-project
-          unzip -q "${{ steps.findzip.outputs.zip }}" -d android-project
-          echo "Isi ZIP:"
+          unzip -oq "$ZIP" -d android-project
+
+          echo "Isi proyek:"
           find android-project -maxdepth 4 -type f | head -100
+
+          GRADLEW=$(find android-project -type f -name gradlew | head -n 1)
+          if [ -z "$GRADLEW" ]; then
+            echo "ERROR: File gradlew tidak ditemukan dalam ZIP."
+            exit 1
+          fi
+
+          echo "PROJECT_DIR=$(dirname "$GRADLEW")" >> "$GITHUB_ENV"
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -36,15 +43,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Build APK
         run: |
-          GRADLEW=$(find android-project -type f -name gradlew | head -n 1)
-          if [ -z "$GRADLEW" ]; then
-            echo "GAGAL: file gradlew tidak ditemukan di ZIP."
-            echo "ZIP harus berisi proyek Android lengkap."
-            exit 1
-          fi
-          PROJECT_DIR=$(dirname "$GRADLEW")
           cd "$PROJECT_DIR"
           chmod +x gradlew
           ./gradlew assembleDebug

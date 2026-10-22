@@ -16,7 +16,7 @@ jobs:
 
       - name: Extract Android project
         run: |
-          ZIP="./KP2251_APK_Project_Perbaikan_Tombol.zip"
+          ZIP="./KP2251_APK_Project.zip"
           test -n "$ZIP" || { echo "ZIP tidak ditemukan"; exit 1; }
           mkdir -p android-project
           unzip -oq "$ZIP" -d android-project
